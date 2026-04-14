@@ -1,0 +1,354 @@
+import { useState, KeyboardEvent } from 'react';
+import { analyzeTone, shiftTone } from '../services/ai';
+import {
+  Loader2,
+  Activity,
+  Smile,
+  MessageSquareQuote,
+  Shuffle,
+  SlidersHorizontal,
+  Sparkles,
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { CopyButton } from './CopyButton';
+import { PaneLayout } from '../services/settings';
+
+const SHIFT_TONES = [
+  { id: 'confident', label: 'Confident', desc: 'Assertive and self-assured' },
+  {
+    id: 'empathetic',
+    label: 'Empathetic',
+    desc: 'Understanding and compassionate',
+  },
+  { id: 'direct', label: 'Direct', desc: 'Concise and to-the-point' },
+  { id: 'enthusiastic', label: 'Enthusiastic', desc: 'Energetic and positive' },
+  { id: 'sincere', label: 'Sincere', desc: 'Honest and heartfelt' },
+  {
+    id: 'authoritative',
+    label: 'Authoritative',
+    desc: 'Commanding and expert',
+  },
+];
+
+interface ToneAnalyzerProps {
+  layout: PaneLayout;
+}
+
+export function ToneAnalyzer({ layout }: ToneAnalyzerProps) {
+  const [text, setText] = useState('');
+  const [mode, setMode] = useState<'analyze' | 'shift'>('analyze');
+  const [selectedTargetTone, setSelectedTargetTone] = useState('confident');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Analysis Result
+  const [analysisResult, setAnalysisResult] = useState<{
+    primaryTone: string;
+    secondaryTones: string[];
+    analysis: string;
+    formalityScore: number;
+  } | null>(null);
+
+  // Shifting Result
+  const [shiftedResult, setShiftedResult] = useState<{
+    shiftedText: string;
+    explanation: string;
+  } | null>(null);
+
+  const handleProcess = async () => {
+    if (!text.trim()) return;
+    setIsProcessing(true);
+    try {
+      if (mode === 'analyze') {
+        const res = await analyzeTone(text);
+        setAnalysisResult(res);
+      } else {
+        const res = await shiftTone(text, selectedTargetTone);
+        setShiftedResult(res);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleProcess();
+    }
+  };
+
+  const gridClass =
+    layout === 'side-by-side' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1';
+
+  return (
+    <div className='flex flex-col gap-8 text-left'>
+      <header>
+        <h1 className='text-4xl font-light tracking-tight mb-2 dark:text-white'>
+          Tone Analyzer
+        </h1>
+        <p className='text-gray-500 dark:text-neutral-400'>
+          Analyze emotional resonance or shift your writing to a new frequency.
+        </p>
+      </header>
+
+      {/* Mode Tabs */}
+      <div className='flex gap-1 bg-white dark:bg-neutral-900 p-1 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-800 self-start transition-colors duration-300'>
+        <button
+          onClick={() => setMode('analyze')}
+          className={`px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
+            mode === 'analyze'
+              ? 'bg-black dark:bg-white text-white dark:text-black shadow-lg'
+              : 'text-gray-500 dark:text-neutral-400 hover:bg-gray-50 dark:hover:bg-neutral-800'
+          }`}
+        >
+          <Activity size={16} />
+          Analyze Tone
+        </button>
+        <button
+          onClick={() => setMode('shift')}
+          className={`px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
+            mode === 'shift'
+              ? 'bg-black dark:bg-white text-white dark:text-black shadow-lg'
+              : 'text-gray-500 dark:text-neutral-400 hover:bg-gray-50 dark:hover:bg-neutral-800'
+          }`}
+        >
+          <Shuffle size={16} />
+          Shift Tone
+        </button>
+      </div>
+
+      <AnimatePresence mode='wait'>
+        {mode === 'shift' && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className='bg-white dark:bg-neutral-900 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-800 inline-flex flex-wrap gap-1 transition-colors duration-300 self-start'
+          >
+            {SHIFT_TONES.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setSelectedTargetTone(t.id)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                  selectedTargetTone === t.id
+                    ? 'bg-gray-100 dark:bg-neutral-800 text-black dark:text-white font-semibold'
+                    : 'text-gray-600 dark:text-neutral-400 hover:bg-gray-50 dark:hover:bg-neutral-800/50'
+                }`}
+                title={t.desc}
+              >
+                {t.label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className={`grid gap-6 ${gridClass}`}>
+        {/* Input Section */}
+        <div className='bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden flex flex-col transition-colors duration-300'>
+          <div className='p-4 border-b border-gray-50 dark:border-neutral-800/50 bg-gray-50/50 dark:bg-neutral-800/30 flex justify-between items-center'>
+            <span className='text-sm font-medium text-gray-500 dark:text-neutral-400'>
+              {mode === 'analyze' ? 'Text to Analyze' : 'Text to Transform'}
+            </span>
+            <span className='text-xs text-gray-400 dark:text-neutral-500'>
+              {text.split(/\s+/).filter((w) => w.length > 0).length} words
+            </span>
+          </div>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              mode === 'analyze'
+                ? 'Paste text to analyze its tone...'
+                : 'Paste text to change its tone...'
+            }
+            className='flex-1 p-6 min-h-[300px] resize-none focus:outline-none font-serif text-lg leading-relaxed text-gray-800 dark:text-neutral-200 placeholder:text-gray-300 dark:placeholder-neutral-600 bg-transparent'
+          />
+          <div className='p-4 border-t border-gray-50 dark:border-neutral-800/50 bg-gray-50/50 dark:bg-neutral-800/30 flex justify-end'>
+            <button
+              onClick={handleProcess}
+              disabled={isProcessing || !text.trim()}
+              className='bg-black dark:bg-white text-white dark:text-black px-6 py-2.5 rounded-full font-medium text-sm flex items-center gap-2 hover:bg-gray-800 dark:hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+            >
+              {isProcessing ? (
+                <Loader2
+                  className='animate-spin'
+                  size={16}
+                />
+              ) : mode === 'analyze' ? (
+                <Activity size={16} />
+              ) : (
+                <Sparkles size={16} />
+              )}
+              {isProcessing
+                ? mode === 'analyze'
+                  ? 'Analyzing...'
+                  : 'Transforming...'
+                : mode === 'analyze'
+                  ? 'Analyze Tone'
+                  : `Shift to ${SHIFT_TONES.find((t) => t.id === selectedTargetTone)?.label}`}
+            </button>
+          </div>
+        </div>
+
+        {/* Output Section */}
+        <div className='bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden flex flex-col min-h-[400px] transition-colors duration-300'>
+          <div className='p-4 border-b border-gray-50 dark:border-neutral-800/50 bg-gray-50/50 dark:bg-neutral-800/30 flex justify-between items-center'>
+            <span className='text-sm font-medium text-gray-500 dark:text-neutral-400'>
+              {mode === 'analyze' ? 'Analysis Results' : 'Transformed Text'}
+            </span>
+            {mode === 'analyze' && analysisResult && (
+              <CopyButton
+                text={`Primary Tone: ${analysisResult.primaryTone}\nSecondary Tones: ${analysisResult.secondaryTones.join(', ')}\nFormality Score: ${analysisResult.formalityScore}/10\n\nAnalysis:\n${analysisResult.analysis}`}
+              />
+            )}
+            {mode === 'shift' && shiftedResult && (
+              <CopyButton text={shiftedResult.shiftedText} />
+            )}
+          </div>
+
+          <div className='p-6 flex-1 overflow-y-auto'>
+            <AnimatePresence mode='wait'>
+              {isProcessing ? (
+                <motion.div
+                  key='loading'
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className='h-full flex flex-col items-center justify-center text-gray-400 dark:text-neutral-500 gap-4'
+                >
+                  <Loader2
+                    className='animate-spin'
+                    size={32}
+                  />
+                  <p className='text-sm'>
+                    {mode === 'analyze'
+                      ? 'Reading between the lines...'
+                      : `Infusing with ${selectedTargetTone} energy...`}
+                  </p>
+                </motion.div>
+              ) : mode === 'analyze' && analysisResult ? (
+                <motion.div
+                  key='analysis-result'
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className='flex flex-col gap-8'
+                >
+                  <div className='flex flex-col items-center text-center p-6 bg-linear-to-b from-gray-50 to-white dark:from-neutral-800/50 dark:to-neutral-900 rounded-2xl border border-gray-100 dark:border-neutral-800'>
+                    <Smile
+                      size={32}
+                      className='text-gray-400 dark:text-neutral-500 mb-3'
+                    />
+                    <div className='text-sm font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-widest mb-1'>
+                      Primary Tone
+                    </div>
+                    <div className='text-3xl font-semibold text-gray-900 dark:text-white'>
+                      {analysisResult.primaryTone}
+                    </div>
+                  </div>
+
+                  {analysisResult.secondaryTones?.length > 0 && (
+                    <div>
+                      <div className='text-sm font-semibold text-gray-900 dark:text-neutral-100 uppercase tracking-wider mb-3'>
+                        Secondary Tones
+                      </div>
+                      <div className='flex flex-wrap gap-2'>
+                        {analysisResult.secondaryTones.map((tone, idx) => (
+                          <span
+                            key={idx}
+                            className='px-3 py-1.5 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 rounded-lg text-sm font-medium'
+                          >
+                            {tone}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <div className='flex justify-between items-end mb-2'>
+                      <div className='text-sm font-semibold text-gray-900 dark:text-neutral-100 uppercase tracking-wider'>
+                        Formality Score
+                      </div>
+                      <div className='text-sm font-medium text-gray-500 dark:text-neutral-400'>
+                        {analysisResult.formalityScore} / 10
+                      </div>
+                    </div>
+                    <div className='h-2 w-full bg-gray-100 dark:bg-neutral-800 rounded-full overflow-hidden'>
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{
+                          width: `${(analysisResult.formalityScore / 10) * 100}%`,
+                        }}
+                        transition={{ duration: 1, ease: 'easeOut' }}
+                        className='h-full bg-black dark:bg-white rounded-full'
+                      />
+                    </div>
+                  </div>
+
+                  <div className='pt-6 border-t border-gray-100 dark:border-neutral-800'>
+                    <div className='flex items-center gap-2 mb-3 text-gray-900 dark:text-neutral-100 font-semibold uppercase tracking-wider text-sm'>
+                      <MessageSquareQuote size={16} />
+                      Detailed Analysis
+                    </div>
+                    <p className='text-gray-600 dark:text-neutral-400 leading-relaxed text-sm'>
+                      {analysisResult.analysis}
+                    </p>
+                  </div>
+                </motion.div>
+              ) : mode === 'shift' && shiftedResult ? (
+                <motion.div
+                  key='shift-result'
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className='flex flex-col gap-8'
+                >
+                  <div className='font-serif text-lg leading-relaxed text-gray-800 dark:text-neutral-200'>
+                    {shiftedResult.shiftedText}
+                  </div>
+
+                  {shiftedResult.explanation && (
+                    <div className='pt-6 border-t border-gray-100 dark:border-neutral-800'>
+                      <div className='bg-purple-50/50 dark:bg-purple-900/20 rounded-2xl p-4 text-sm'>
+                        <div className='flex items-center gap-2 mb-2 text-purple-700 dark:text-purple-400 font-medium'>
+                          <SlidersHorizontal size={16} />
+                          Transformation Notes
+                        </div>
+                        <p className='text-gray-600 dark:text-neutral-400 leading-relaxed'>
+                          {shiftedResult.explanation}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key='empty'
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className='h-full flex flex-col items-center justify-center text-gray-400 dark:text-neutral-500 gap-4'
+                >
+                  <div className='w-16 h-16 rounded-full bg-gray-50 dark:bg-neutral-800/50 flex items-center justify-center'>
+                    {mode === 'analyze' ? (
+                      <Activity size={24} />
+                    ) : (
+                      <Shuffle size={24} />
+                    )}
+                  </div>
+                  <p className='text-sm'>
+                    {mode === 'analyze'
+                      ? 'Your tone analysis will appear here.'
+                      : 'Your transformed text will appear here.'}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
