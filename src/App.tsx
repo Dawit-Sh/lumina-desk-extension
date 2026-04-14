@@ -104,16 +104,36 @@ export default function App() {
               />
             )}
             {activeTab === 'paraphrase' && (
-              <Paraphraser layout={settings.layout} />
+              <Paraphraser 
+                layout={settings.layout} 
+                optionsStyle={settings.optionsStyle} 
+              />
             )}
             {activeTab === 'summarize' && (
-              <Summarizer layout={settings.layout} />
+              <Summarizer 
+                layout={settings.layout} 
+                optionsStyle={settings.optionsStyle}
+              />
             )}
-            {activeTab === 'tone' && <ToneAnalyzer layout={settings.layout} />}
+            {activeTab === 'tone' && (
+              <ToneAnalyzer 
+                layout={settings.layout} 
+                optionsStyle={settings.optionsStyle}
+              />
+            )}
             {activeTab === 'humanizer' && (
-              <Humanizer layout={settings.layout} />
+              <Humanizer 
+                layout={settings.layout} 
+                optionsStyle={settings.optionsStyle}
+              />
             )}
-            {activeTab === 'prompt' && <PromptSuite layout={settings.layout} />}
+            {activeTab === 'prompt' && (
+              <PromptSuite 
+                layout={settings.layout} 
+                optionsStyle={settings.optionsStyle}
+              />
+            )}
+
             {activeTab === 'settings' && (
               <SettingsManager
                 settings={settings}

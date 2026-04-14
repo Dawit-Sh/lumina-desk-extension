@@ -1,5 +1,5 @@
 import { useState, KeyboardEvent } from 'react';
-import { analyzeTone, shiftTone } from '../services/ai';
+import { analyzeTone, shiftTone, MAX_INPUT_CHARACTERS } from '../services/ai';
 import {
   Loader2,
   Activity,
@@ -9,10 +9,13 @@ import {
   SlidersHorizontal,
   Sparkles,
   AlertCircle,
+  CircleAlert,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CopyButton } from './CopyButton';
-import { PaneLayout } from '../services/settings';
+import { PaneLayout, OptionsStyle } from '../services/settings';
+import { CharCount } from './CharCount';
+import { OptionsControl } from './ui/OptionsControl';
 
 const SHIFT_TONES = [
   { id: 'confident', label: 'Confident', desc: 'Assertive and self-assured' },
@@ -33,9 +36,10 @@ const SHIFT_TONES = [
 
 interface ToneAnalyzerProps {
   layout: PaneLayout;
+  optionsStyle: OptionsStyle;
 }
 
-export function ToneAnalyzer({ layout }: ToneAnalyzerProps) {
+export function ToneAnalyzer({ layout, optionsStyle }: ToneAnalyzerProps) {
   const [text, setText] = useState('');
   const [mode, setMode] = useState<'analyze' | 'shift'>('analyze');
   const [selectedTargetTone, setSelectedTargetTone] = useState('confident');
@@ -56,8 +60,10 @@ export function ToneAnalyzer({ layout }: ToneAnalyzerProps) {
     explanation: string;
   } | null>(null);
 
+  const isOverLimit = text.length > MAX_INPUT_CHARACTERS;
+
   const handleProcess = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || isOverLimit) return;
     setIsProcessing(true);
     setError(null);
     try {
@@ -69,7 +75,9 @@ export function ToneAnalyzer({ layout }: ToneAnalyzerProps) {
         setShiftedResult(res);
       }
     } catch (err: any) {
-      setError(err?.message || 'An unexpected error occurred. Please try again.');
+      setError(
+        err?.message || 'An unexpected error occurred. Please try again.',
+      );
       console.error(err);
     } finally {
       setIsProcessing(false);
@@ -97,30 +105,27 @@ export function ToneAnalyzer({ layout }: ToneAnalyzerProps) {
         </p>
       </header>
 
-      {/* Mode Tabs */}
-      <div className='flex gap-1 bg-white dark:bg-neutral-900 p-1 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-800 self-start transition-colors duration-300'>
-        <button
-          onClick={() => setMode('analyze')}
-          className={`px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
-            mode === 'analyze'
-              ? 'bg-black dark:bg-white text-white dark:text-black shadow-lg'
-              : 'text-gray-500 dark:text-neutral-400 hover:bg-gray-50 dark:hover:bg-neutral-800'
-          }`}
-        >
-          <Activity size={16} />
-          Analyze Tone
-        </button>
-        <button
-          onClick={() => setMode('shift')}
-          className={`px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
-            mode === 'shift'
-              ? 'bg-black dark:bg-white text-white dark:text-black shadow-lg'
-              : 'text-gray-500 dark:text-neutral-400 hover:bg-gray-50 dark:hover:bg-neutral-800'
-          }`}
-        >
-          <Shuffle size={16} />
-          Shift Tone
-        </button>
+      {/* Mode Selector */}
+      <div className='self-start'>
+        <OptionsControl
+          value={mode}
+          options={[
+            {
+              value: 'analyze',
+              label: 'Analyze Tone',
+              description: 'Analyze emotional resonance',
+            },
+            {
+              value: 'shift',
+              label: 'Shift Tone',
+              description: 'Transform into a new frequency',
+            },
+          ]}
+          onChange={(v) => setMode(v as 'analyze' | 'shift')}
+          style={optionsStyle}
+          tabsClassName='w-max'
+          dropdownClassName='w-[200px]'
+        />
       </div>
 
       <AnimatePresence mode='wait'>
@@ -129,22 +134,20 @@ export function ToneAnalyzer({ layout }: ToneAnalyzerProps) {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className='bg-white dark:bg-neutral-900 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-800 inline-flex flex-wrap gap-1 transition-colors duration-300 self-start'
+            className='self-start'
           >
-            {SHIFT_TONES.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setSelectedTargetTone(t.id)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                  selectedTargetTone === t.id
-                    ? 'bg-gray-100 dark:bg-neutral-800 text-black dark:text-white font-semibold'
-                    : 'text-gray-600 dark:text-neutral-400 hover:bg-gray-50 dark:hover:bg-neutral-800/50'
-                }`}
-                title={t.desc}
-              >
-                {t.label}
-              </button>
-            ))}
+            <OptionsControl
+              value={selectedTargetTone}
+              options={SHIFT_TONES.map((t) => ({
+                value: t.id,
+                label: t.label,
+                description: t.desc,
+              }))}
+              onChange={setSelectedTargetTone}
+              style={optionsStyle}
+              className='w-full sm:w-auto'
+              dropdownClassName='sm:w-[300px]'
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -152,30 +155,57 @@ export function ToneAnalyzer({ layout }: ToneAnalyzerProps) {
       <div className={`grid gap-6 ${gridClass}`}>
         {/* Input Section */}
         <div className='bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden flex flex-col transition-colors duration-300'>
-          <div className='p-4 border-b border-gray-50 dark:border-neutral-800/50 bg-gray-50/50 dark:bg-neutral-800/30 flex justify-between items-center'>
-            <span className='text-sm font-medium text-gray-500 dark:text-neutral-400'>
+          <div className='p-4 border-b border-gray-50 dark:border-neutral-800/50 bg-gray-50/50 dark:bg-neutral-800/30 flex justify-between items-center transition-colors'>
+            <span className='text-sm font-medium text-gray-500 dark:text-neutral-400 font-sans'>
               {mode === 'analyze' ? 'Text to Analyze' : 'Text to Transform'}
             </span>
-            <span className='text-xs text-gray-400 dark:text-neutral-500'>
-              {text.split(/\s+/).filter((w) => w.length > 0).length} words
-            </span>
           </div>
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              mode === 'analyze'
-                ? 'Paste text to analyze its tone...'
-                : 'Paste text to change its tone...'
-            }
-            className='flex-1 p-6 min-h-[300px] resize-none focus:outline-none font-serif text-lg leading-relaxed text-gray-800 dark:text-neutral-200 placeholder:text-gray-300 dark:placeholder-neutral-600 bg-transparent'
-          />
-          <div className='p-4 border-t border-gray-50 dark:border-neutral-800/50 bg-gray-50/50 dark:bg-neutral-800/30 flex justify-end'>
+          <div className='relative flex-1 flex flex-col group min-h-[300px]'>
+            <AnimatePresence>
+              {isOverLimit && (
+                <motion.div
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className='absolute inset-x-0 top-0 z-10 bg-red-500/10 dark:bg-red-500/5 border-b border-red-200 dark:border-red-900/30 backdrop-blur-sm px-6 py-3 flex items-center justify-between pointer-events-none'
+                >
+                  <div className='flex items-center gap-3 text-red-600 dark:text-red-400 text-xs font-semibold'>
+                    <CircleAlert
+                      size={14}
+                      className='animate-pulse'
+                    />
+                    <span>EXCEEDS CAPACITY LIMIT</span>
+                  </div>
+                  <span className='text-[10px] font-mono text-red-500/70 uppercase'>
+                    {(text.length - MAX_INPUT_CHARACTERS).toLocaleString()}{' '}
+                    chars overflowing
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={
+                mode === 'analyze'
+                  ? 'Paste text to analyze its tone...'
+                  : 'Paste text to change its tone...'
+              }
+              className={`flex-1 p-6 ${isOverLimit ? 'pt-14' : ''} resize-none focus:outline-none font-serif text-lg leading-relaxed text-gray-800 dark:text-neutral-200 placeholder:text-gray-300 dark:placeholder-neutral-600 bg-transparent transition-all duration-300 ${isOverLimit ? 'bg-red-50/10 dark:bg-red-950/5' : ''}`}
+            />
+          </div>
+          <div className='p-4 border-t border-gray-50 dark:border-neutral-800/50 bg-gray-50/50 dark:bg-neutral-800/30 flex flex-col-reverse 2xl:flex-row 2xl:justify-between items-start 2xl:items-center transition-colors'>
+            <div className='flex items-center mt-6 2xl:mt-0 gap-4'>
+              <CharCount count={text.length} />
+              <span className='text-[10px] uppercase font-bold tracking-widest text-gray-400 dark:text-neutral-500 '>
+                {text.split(/\s+/).filter((w) => w.length > 0).length} words
+              </span>
+            </div>
             <button
               onClick={handleProcess}
-              disabled={isProcessing || !text.trim()}
-              className='bg-black dark:bg-white text-white dark:text-black px-6 py-2.5 rounded-full font-medium text-sm flex items-center gap-2 hover:bg-gray-800 dark:hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+              disabled={isProcessing || !text.trim() || isOverLimit}
+              className={`px-6 py-2.5 rounded-full font-medium text-sm flex items-center gap-2 transition-all ${isOverLimit ? 'bg-gray-100 dark:bg-neutral-800 text-gray-400 dark:text-neutral-600' : 'bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-neutral-200'} disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {isProcessing ? (
                 <Loader2
@@ -235,24 +265,26 @@ export function ToneAnalyzer({ layout }: ToneAnalyzerProps) {
                   </p>
                 </motion.div>
               ) : error ? (
-                <motion.div 
-                  key="error"
+                <motion.div
+                  key='error'
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="h-full flex flex-col items-center justify-center text-center p-6 gap-4"
+                  className='h-full flex flex-col items-center justify-center text-center p-6 gap-4'
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500">
+                  <div className='w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500'>
                     <AlertCircle size={24} />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-900 dark:text-neutral-100 mb-1">Processing Failed</h3>
-                    <p className="text-xs text-gray-500 dark:text-neutral-400 max-w-[200px] leading-relaxed">
+                    <h3 className='text-sm font-semibold text-gray-900 dark:text-neutral-100 mb-1'>
+                      Processing Failed
+                    </h3>
+                    <p className='text-xs text-gray-500 dark:text-neutral-400 max-w-[200px] leading-relaxed'>
                       {error}
                     </p>
                   </div>
-                  <button 
+                  <button
                     onClick={handleProcess}
-                    className="text-xs font-semibold text-red-600 dark:text-red-400 hover:underline"
+                    className='text-xs font-semibold text-red-600 dark:text-red-400 hover:underline'
                   >
                     Try again
                   </button>

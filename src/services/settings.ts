@@ -8,11 +8,14 @@ export type GeminiModel =
   | 'gemini-2.5-flash'
   | 'gemini-2.5-pro';
 
+export type OptionsStyle = 'tabs' | 'dropdown';
+
 export interface AppSettings {
   preserveInformality: boolean;
   defaultTab: AppTab;
   theme: Theme;
   layout: PaneLayout;
+  optionsStyle: OptionsStyle;
   sidebarCollapsed: boolean;
   model: GeminiModel;
   proModel: GeminiModel;
@@ -25,10 +28,12 @@ const DEFAULT_SETTINGS: AppSettings = {
   defaultTab: 'grammar',
   theme: 'system',
   layout: 'side-by-side',
+  optionsStyle: 'tabs',
   sidebarCollapsed: false,
   model: 'gemini-3-flash-preview',
   proModel: 'gemini-3.1-pro-preview',
 };
+
 
 export function getSettings(): AppSettings {
   if (typeof window === 'undefined') return DEFAULT_SETTINGS;
