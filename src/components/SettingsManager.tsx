@@ -1,4 +1,4 @@
-import { AppSettings, saveSettings, AppTab, Theme, PaneLayout } from '../services/settings';
+import { AppSettings, saveSettings, AppTab, Theme, PaneLayout, GeminiModel } from '../services/settings';
 import { Settings as SettingsIcon, Columns2, Rows2, Moon, Sun, Monitor, CheckCircle2 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -110,6 +110,71 @@ export function SettingsManager({ settings, onUpdate }: SettingsProps) {
                 />
               </div>
             </div>
+          </div>
+        </div>
+        
+        {/* Gemini Models Section */}
+        <div className="flex flex-col gap-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-neutral-500">Gemini Intelligence</h2>
+          <div className="bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-gray-100 dark:border-neutral-800 flex flex-col gap-6 transition-colors">
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="font-medium dark:text-white text-sm">Standard Model (Flash)</span>
+                <span className="text-xs text-gray-500 dark:text-neutral-400">Used for quick tasks like grammar and tone checks.</span>
+              </div>
+              <select 
+                value={settings.model}
+                onChange={(e) => handleUpdate({ model: e.target.value as GeminiModel })}
+                className="bg-gray-50 dark:bg-neutral-800 border-none rounded-xl text-xs px-3 py-2 focus:ring-1 focus:ring-black dark:focus:ring-white dark:text-white outline-none"
+              >
+                <option value="gemini-3-flash-preview">Gemini 3 Flash (2026 Preview)</option>
+                <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (2026 Preview)</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              </select>
+            </div>
+
+            <div className="h-px bg-gray-50 dark:bg-neutral-800" />
+
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="font-medium dark:text-white text-sm">Reasoning Model (Pro)</span>
+                <span className="text-xs text-gray-500 dark:text-neutral-400">Used for heavy tasks like AI Humanization and Forensics.</span>
+              </div>
+              <select 
+                value={settings.proModel}
+                onChange={(e) => handleUpdate({ proModel: e.target.value as GeminiModel })}
+                className="bg-gray-50 dark:bg-neutral-800 border-none rounded-xl text-xs px-3 py-2 focus:ring-1 focus:ring-black dark:focus:ring-white dark:text-white outline-none"
+              >
+                <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Flagship)</option>
+                <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        {/* Shortcuts Section */}
+        <div className="flex flex-col gap-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 dark:text-neutral-500">Keyboard Shortcuts</h2>
+          <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-gray-100 dark:border-neutral-800 divide-y divide-gray-50 dark:divide-neutral-800 transition-colors overflow-hidden">
+            {[
+              { label: 'Toggle Sidebar', key: 'Mod + B' },
+              { label: 'Toggle Layout', key: 'Mod + L' },
+              { label: 'Toggle Theme', key: 'Mod + Shift + L' },
+              { label: 'Settings', key: 'Mod + ,' },
+            ].map(s => (
+              <div key={s.label} className="p-4 flex items-center justify-between hover:bg-gray-50/50 dark:hover:bg-neutral-800/30 transition-colors">
+                <span className="text-sm text-gray-600 dark:text-neutral-300">{s.label}</span>
+                <div className="flex gap-1">
+                  {s.key.split(' + ').map(k => (
+                    <kbd key={k} className="px-2 py-1 bg-gray-100 dark:bg-neutral-800 text-[10px] font-mono font-bold rounded-md border border-gray-200 dark:border-neutral-700 text-gray-500 dark:text-neutral-400 shadow-sm min-w-[24px] text-center">
+                      {k === 'Mod' ? (navigator.platform.includes('Mac') ? '⌘' : 'Ctrl') : k}
+                    </kbd>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>

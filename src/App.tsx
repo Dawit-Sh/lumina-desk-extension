@@ -48,6 +48,38 @@ export default function App() {
     }
   }, [settings.theme]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMod = e.metaKey || e.ctrlKey;
+
+      if (isMod && e.key === 'b') {
+        e.preventDefault();
+        updateSettings({ sidebarCollapsed: !settings.sidebarCollapsed });
+      }
+
+      if (isMod && e.key === 'l' && !e.shiftKey) {
+        e.preventDefault();
+        updateSettings({
+          layout:
+            settings.layout === 'side-by-side' ? 'stacked' : 'side-by-side',
+        });
+      }
+
+      if (isMod && e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' });
+      }
+
+      if (isMod && e.key === ',') {
+        e.preventDefault();
+        setActiveTab('settings');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [settings, setActiveTab]);
+
   return (
     <div className='h-screen flex flex-col md:flex-row bg-[#fdfdfd] dark:bg-neutral-950 transition-colors duration-300 overflow-hidden'>
       <Sidebar
@@ -78,7 +110,9 @@ export default function App() {
               <Summarizer layout={settings.layout} />
             )}
             {activeTab === 'tone' && <ToneAnalyzer layout={settings.layout} />}
-            {activeTab === 'humanizer' && <Humanizer layout={settings.layout} />}
+            {activeTab === 'humanizer' && (
+              <Humanizer layout={settings.layout} />
+            )}
             {activeTab === 'prompt' && <PromptSuite layout={settings.layout} />}
             {activeTab === 'settings' && (
               <SettingsManager

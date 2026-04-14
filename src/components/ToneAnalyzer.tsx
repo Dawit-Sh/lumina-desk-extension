@@ -8,6 +8,7 @@ import {
   Shuffle,
   SlidersHorizontal,
   Sparkles,
+  AlertCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CopyButton } from './CopyButton';
@@ -39,6 +40,7 @@ export function ToneAnalyzer({ layout }: ToneAnalyzerProps) {
   const [mode, setMode] = useState<'analyze' | 'shift'>('analyze');
   const [selectedTargetTone, setSelectedTargetTone] = useState('confident');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Analysis Result
   const [analysisResult, setAnalysisResult] = useState<{
@@ -57,6 +59,7 @@ export function ToneAnalyzer({ layout }: ToneAnalyzerProps) {
   const handleProcess = async () => {
     if (!text.trim()) return;
     setIsProcessing(true);
+    setError(null);
     try {
       if (mode === 'analyze') {
         const res = await analyzeTone(text);
@@ -65,8 +68,9 @@ export function ToneAnalyzer({ layout }: ToneAnalyzerProps) {
         const res = await shiftTone(text, selectedTargetTone);
         setShiftedResult(res);
       }
-    } catch (error) {
-      console.error(error);
+    } catch (err: any) {
+      setError(err?.message || 'An unexpected error occurred. Please try again.');
+      console.error(err);
     } finally {
       setIsProcessing(false);
     }
@@ -229,6 +233,29 @@ export function ToneAnalyzer({ layout }: ToneAnalyzerProps) {
                       ? 'Reading between the lines...'
                       : `Infusing with ${selectedTargetTone} energy...`}
                   </p>
+                </motion.div>
+              ) : error ? (
+                <motion.div 
+                  key="error"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="h-full flex flex-col items-center justify-center text-center p-6 gap-4"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500">
+                    <AlertCircle size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-neutral-100 mb-1">Processing Failed</h3>
+                    <p className="text-xs text-gray-500 dark:text-neutral-400 max-w-[200px] leading-relaxed">
+                      {error}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={handleProcess}
+                    className="text-xs font-semibold text-red-600 dark:text-red-400 hover:underline"
+                  >
+                    Try again
+                  </button>
                 </motion.div>
               ) : mode === 'analyze' && analysisResult ? (
                 <motion.div

@@ -13,6 +13,7 @@ interface GrammarCheckerProps {
 export function GrammarChecker({ preserveInformalityDefault, layout }: GrammarCheckerProps) {
   const [text, setText] = useState('');
   const [isChecking, setIsChecking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isInformal, setIsInformal] = useState(preserveInformalityDefault);
   const [result, setResult] = useState<{
     correctedText: string;
@@ -22,11 +23,13 @@ export function GrammarChecker({ preserveInformalityDefault, layout }: GrammarCh
   const handleCheck = async () => {
     if (!text.trim()) return;
     setIsChecking(true);
+    setError(null);
     try {
       const res = await checkGrammar(text, isInformal);
       setResult(res);
-    } catch (error) {
-      console.error(error);
+    } catch (err: any) {
+      setError(err?.message || 'An unexpected error occurred. Please try again.');
+      console.error(err);
     } finally {
       setIsChecking(false);
     }
@@ -102,6 +105,29 @@ export function GrammarChecker({ preserveInformalityDefault, layout }: GrammarCh
                 >
                   <Loader2 className="animate-spin" size={32} />
                   <p className="text-sm">Analyzing sentence structure...</p>
+                </motion.div>
+              ) : error ? (
+                <motion.div 
+                  key="error"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="h-full flex flex-col items-center justify-center text-center p-6 gap-4"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500">
+                    <AlertCircle size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-neutral-100 mb-1">Analysis Failed</h3>
+                    <p className="text-xs text-gray-500 dark:text-neutral-400 max-w-[200px] leading-relaxed">
+                      {error}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={handleCheck}
+                    className="text-xs font-semibold text-red-600 dark:text-red-400 hover:underline"
+                  >
+                    Try again
+                  </button>
                 </motion.div>
               ) : result ? (
                 <motion.div 

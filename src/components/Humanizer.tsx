@@ -9,6 +9,7 @@ import {
   BrainCircuit,
   Activity,
   Search,
+  AlertCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CopyButton } from './CopyButton';
@@ -24,6 +25,7 @@ export function Humanizer({ layout }: HumanizerProps) {
   const [text, setText] = useState('');
   const [mode, setMode] = useState<Mode>('detect');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [detectResult, setDetectResult] = useState<{
     aiScore: number;
@@ -41,6 +43,7 @@ export function Humanizer({ layout }: HumanizerProps) {
   const handleProcess = async () => {
     if (!text.trim()) return;
     setIsProcessing(true);
+    setError(null);
     try {
       if (mode === 'detect') {
         const res = await detectAI(text);
@@ -49,8 +52,9 @@ export function Humanizer({ layout }: HumanizerProps) {
         const res = await humanizeAndDetect(text);
         setHumanizeResult(res);
       }
-    } catch (error) {
-      console.error(error);
+    } catch (err: any) {
+      setError(err?.message || 'An unexpected error occurred. Please try again.');
+      console.error(err);
     } finally {
       setIsProcessing(false);
     }
@@ -122,7 +126,7 @@ export function Humanizer({ layout }: HumanizerProps) {
 
       <div className={`grid gap-6 ${gridClass}`}>
         {/* Input Section */}
-        <div className='bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden flex flex-col transition-colors duration-300 transition-colors duration-300'>
+        <div className='bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden flex flex-col transition-colors duration-300'>
           <div className='p-4 border-b border-gray-50 dark:border-neutral-800/50 bg-gray-50/50 dark:bg-neutral-800/30 flex justify-between items-center'>
             <span className='text-sm font-medium text-gray-500 dark:text-neutral-400'>
               Text to {mode === 'detect' ? 'Scan' : 'Humanize'}
@@ -197,6 +201,29 @@ export function Humanizer({ layout }: HumanizerProps) {
                       ? 'Scanning for AI fingerprints...'
                       : 'Deconstructing robotic syntax...'}
                   </p>
+                </motion.div>
+              ) : error ? (
+                <motion.div 
+                  key="error"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="h-full flex flex-col items-center justify-center text-center p-6 gap-4"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500">
+                    <AlertCircle size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-neutral-100 mb-1">Humanizer Failed</h3>
+                    <p className="text-xs text-gray-500 dark:text-neutral-400 max-w-[200px] leading-relaxed">
+                      {error}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={handleProcess}
+                    className="text-xs font-semibold text-red-600 dark:text-red-400 hover:underline"
+                  >
+                    Try again
+                  </button>
                 </motion.div>
               ) : currentResult ? (
                 <motion.div

@@ -2,12 +2,20 @@ export type PaneLayout = 'side-by-side' | 'stacked';
 export type AppTab = 'grammar' | 'paraphrase' | 'summarize' | 'tone' | 'prompt' | 'humanizer' | 'settings';
 export type Theme = 'light' | 'dark' | 'system';
 
+export type GeminiModel = 
+  | 'gemini-3-flash-preview'
+  | 'gemini-3.1-pro-preview'
+  | 'gemini-2.5-flash'
+  | 'gemini-2.5-pro';
+
 export interface AppSettings {
   preserveInformality: boolean;
   defaultTab: AppTab;
   theme: Theme;
   layout: PaneLayout;
   sidebarCollapsed: boolean;
+  model: GeminiModel;
+  proModel: GeminiModel;
 }
 
 const STORAGE_KEY = 'lumina_settings';
@@ -18,6 +26,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
   layout: 'side-by-side',
   sidebarCollapsed: false,
+  model: 'gemini-3-flash-preview',
+  proModel: 'gemini-3.1-pro-preview',
 };
 
 export function getSettings(): AppSettings {
