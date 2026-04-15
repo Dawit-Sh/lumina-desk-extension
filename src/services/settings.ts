@@ -1,5 +1,5 @@
 export type PaneLayout = 'side-by-side' | 'stacked';
-export type AppTab = 'grammar' | 'paraphrase' | 'summarize' | 'tone' | 'prompt' | 'humanizer' | 'settings';
+export type AppTab = 'grammar' | 'paraphrase' | 'summarize' | 'tone' | 'prompt' | 'humanizer' | 'translate' | 'dictionary' | 'settings';
 export type Theme = 'light' | 'dark' | 'system';
 
 export type GeminiModel = 

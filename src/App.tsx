@@ -5,6 +5,8 @@ import { Summarizer } from './components/Summarizer';
 import { ToneAnalyzer } from './components/ToneAnalyzer';
 import { PromptSuite } from './components/PromptSuite';
 import { Humanizer } from './components/Humanizer';
+import { Translator } from './components/Translator';
+import { Dictionary } from './components/Dictionary';
 import { SettingsManager } from './components/SettingsManager';
 import { Sidebar } from './components/Sidebar';
 import {
@@ -133,7 +135,15 @@ export default function App() {
                 optionsStyle={settings.optionsStyle}
               />
             )}
-
+            {activeTab === 'translate' && (
+              <Translator 
+                layout={settings.layout} 
+                optionsStyle={settings.optionsStyle}
+              />
+            )}
+            {activeTab === 'dictionary' && (
+              <Dictionary />
+            )}
             {activeTab === 'settings' && (
               <SettingsManager
                 settings={settings}

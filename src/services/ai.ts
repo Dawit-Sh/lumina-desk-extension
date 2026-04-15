@@ -15,10 +15,10 @@ const google = createGoogleGenerativeAI({
 
 /**
  * Maximum character limit for input to stay within Gemini's 1M context window
- * 400,000 characters is roughly 100,000 tokens (conservative 4 chars/token estimate).
- * This leaves ~900k tokens for detailed system prompts and 65k output tokens.
+ * 200,000 characters is roughly 50,000 tokens (conservative 4 chars/token estimate).
+ * This leaves ~950k tokens for detailed system prompts and 65k output tokens.
  */
-export const MAX_INPUT_CHARACTERS = 400000;
+export const MAX_INPUT_CHARACTERS = 200000;
 
 function ensureSafeInput(text: string, label: string = 'Input') {
   if (!text || text.trim().length === 0) {
@@ -523,6 +523,207 @@ ${text}
     },
     'default',
   );
+
+  return output;
+}
+
+export async function translateText(
+  text: string,
+  sourceLang: string,
+  targetLang: string,
+) {
+  ensureSafeInput(text, 'Text to translate');
+  const { output } = await callAI({
+    output: Output.object({
+      schema: z.object({
+        translatedText: z
+          .string()
+          .describe('The translated text in the target language.'),
+        detectedSourceLang: z
+          .string()
+          .describe(
+            'The detected or confirmed source language (e.g., "English", "Spanish").',
+          ),
+        confidence: z
+          .number()
+          .describe('Confidence score (0-100) in the translation quality.'),
+        notes: z
+          .string()
+          .describe(
+            'Brief notes on translation choices — idioms adapted, cultural context shifts, or ambiguities resolved.',
+          ),
+      }),
+    }),
+    prompt: `You are a world-class professional translator with native-level fluency in over 100 languages and deep expertise in cross-cultural communication, linguistic nuance, and domain-specific terminology.
+
+YOUR TASK: Translate the provided text from ${sourceLang === 'auto' ? 'the auto-detected source language' : `"${sourceLang}"`} into "${targetLang}".
+
+TRANSLATION PRINCIPLES:
+1. **Meaning over literalism** — Translate the intended meaning, not word-for-word. Adapt idioms, metaphors, and culturally-specific expressions into natural equivalents in the target language.
+2. **Register preservation** — Match the formality level, tone, and style of the original. A casual message stays casual; a legal document stays precise.
+3. **Cultural adaptation** — Adjust cultural references, units of measurement, date formats, and naming conventions where appropriate for the target audience.
+4. **Technical accuracy** — Preserve domain-specific terminology (medical, legal, technical, academic) with their standard equivalents in the target language.
+5. **Natural fluency** — The translation must read as if originally written in the target language by a native speaker. No translationese.
+
+SPECIAL HANDLING:
+- Proper nouns: Transliterate or keep as-is based on target language conventions.
+- Code snippets, URLs, and technical identifiers: Preserve exactly as-is.
+- Formatting: Maintain paragraph breaks, bullet points, and structural elements.
+- Ambiguity: If the source text is ambiguous, choose the most likely interpretation and note the ambiguity.
+
+CONFIDENCE SCORING:
+- 90-100: High confidence — clear source text, well-supported language pair, unambiguous meaning.
+- 70-89: Good confidence — minor ambiguities or less common language pair.
+- 50-69: Moderate confidence — significant ambiguities, very informal/slang source, or rare dialect.
+- Below 50: Low confidence — heavily context-dependent, incomplete source, or unsupported dialect.
+
+${sourceLang === 'auto' ? 'First, detect the source language and state it in detectedSourceLang.' : ''}
+
+TEXT TO TRANSLATE:
+"""
+${text}
+"""`,
+  });
+
+  return output;
+}
+
+export async function expandText(text: string) {
+  ensureSafeInput(text, 'Text to expand');
+  const { output } = await callAI({
+    output: Output.object({
+      schema: z.object({
+        expandedText: z
+          .string()
+          .describe('The expanded, more detailed version of the text.'),
+        explanation: z
+          .string()
+          .describe(
+            'Explanation of how the text was expanded — what details, examples, or elaborations were added.',
+          ),
+      }),
+    }),
+    prompt: `You are an expert writer and content developer specializing in elaboration, exposition, and rhetorical amplification.
+
+YOUR TASK: Expand the provided text by adding depth, detail, context, and supporting information while preserving the original meaning, tone, and intent.
+
+EXPANSION STRATEGY:
+1. **Clarify and elaborate** — Unpack compressed or dense statements into fuller explanations. Break complex ideas into digestible sub-points.
+2. **Add supporting details** — Include relevant examples, analogies, statistics, or illustrative scenarios that strengthen the original points.
+3. **Develop context** — Provide background information, historical context, or framing that helps the reader understand the significance of the content.
+4. **Strengthen transitions** — Add connective tissue between ideas so the expanded text flows naturally as a cohesive piece.
+5. **Enrich vocabulary** — Use more precise and descriptive language where the original is terse, but avoid verbosity for its own sake.
+
+RULES:
+- The expanded text should be approximately 2-3x the length of the original.
+- Preserve the original meaning, tone, and factual content exactly — do NOT change the author's position or introduce new claims.
+- Preserve proper nouns, technical terms, and specific data exactly.
+- Do not pad with filler phrases or generic statements. Every added sentence must contribute substantive value.
+- Maintain the original paragraph structure as a skeleton — expand within and around it, not by replacing it.
+- If the text is already detailed and well-developed, note this and expand only where genuinely beneficial.
+
+In your explanation, describe the specific elaboration techniques used (e.g., "added example for concept X," "provided historical context for Y").
+
+TEXT TO EXPAND:
+"""
+${text}
+"""`,
+  });
+
+  return output;
+}
+
+export async function lookupWord(query: string) {
+  ensureSafeInput(query, 'Dictionary query');
+  const { output } = await callAI({
+    output: Output.object({
+      schema: z.object({
+        entry: z.string().describe('The canonical form of the word, phrase, idiom, or expression being looked up.'),
+        pronunciation: z.string().describe('IPA pronunciation (e.g., /prəˌnʌnsiˈeɪʃən/). For phrases/idioms, provide the pronunciation of the key stressed words.'),
+        partOfSpeech: z.array(z.string()).describe('All possible parts of speech (e.g., ["noun", "verb (transitive)", "adjective"]). For phrases, use labels like "idiom", "phrasal verb", "collocation", "proverb", etc.'),
+        definitions: z.array(
+          z.object({
+            meaning: z.string().describe('Clear, precise definition of this sense.'),
+            examples: z.array(z.string()).describe('2-3 natural, illustrative example sentences showing this meaning in context. Use diverse registers and scenarios.'),
+            register: z.string().describe('Usage register: "formal", "informal", "neutral", "slang", "technical", "literary", "archaic", etc.'),
+          })
+        ).describe('All major senses/definitions, ordered from most common to most specialized.'),
+        etymology: z.string().describe('Origin and history of the word/expression. Include the source language, original meaning, and how it evolved. For idioms, explain the origin story or cultural context.'),
+        collocations: z.array(
+          z.object({
+            pattern: z.string().describe('The collocation pattern (e.g., "make a decision", "heavy rain", "deeply concerned").'),
+            example: z.string().describe('A natural example sentence using this collocation.'),
+          })
+        ).describe('Common word partnerships and collocations — words that naturally go together with this entry.'),
+        synonyms: z.array(
+          z.object({
+            word: z.string().describe('The synonym or near-synonym.'),
+            nuance: z.string().describe('How this synonym differs in meaning, formality, or connotation from the looked-up word.'),
+          })
+        ).describe('Synonyms with nuance explanations showing how each differs from the entry word.'),
+        antonyms: z.array(z.string()).describe('Direct antonyms or opposite expressions.'),
+        relatedIdioms: z.array(
+          z.object({
+            idiom: z.string().describe('The idiom or fixed expression.'),
+            meaning: z.string().describe('What the idiom means.'),
+            example: z.string().describe('An example sentence using this idiom naturally.'),
+          })
+        ).describe('Related idioms, fixed expressions, or proverbs that use or relate to this word/concept.'),
+        commonMistakes: z.array(
+          z.object({
+            mistake: z.string().describe('The common error learners make.'),
+            correction: z.string().describe('The correct usage with explanation.'),
+          })
+        ).describe('Common mistakes learners make with this word/expression — grammatical errors, false friends, confused pairs, etc.'),
+        memoryTip: z.string().describe('A memorable mnemonic, visual association, or learning tip to help remember this word/expression.'),
+        frequencyLevel: z.string().describe('How common this word is: "Essential (top 1000)", "Common (top 3000)", "Intermediate (top 5000)", "Advanced (top 10000)", "Specialized/Rare", or "Idiom/Expression".'),
+      }),
+    }),
+    prompt: `You are an elite lexicographer, linguist, and language pedagogy expert — a fusion of Oxford English Dictionary precision, Merriam-Webster accessibility, and a world-class ESL teacher's intuition for what learners actually need.
+
+YOUR TASK: Provide a comprehensive, learner-focused dictionary entry for the query below. This is for an advanced English learner who wants to deeply understand and actively USE this word/expression/phrase.
+
+INPUT HANDLING:
+- If the input is a single word → provide full lexical analysis across all senses and parts of speech.
+- If the input is a phrase, idiom, or expression → treat it as a fixed unit. Focus on its idiomatic meaning, origin, and usage.
+- If the input is a collocation (e.g., "make a decision") → analyze the collocation pattern and why these words pair together.
+- If the input is misspelled → correct it and proceed with the intended word.
+- If the input is in a language other than English → provide the English translation/equivalent and analyze that.
+
+DEFINITION QUALITY:
+- Definitions must be precise but accessible — avoid circular definitions.
+- Order senses from most frequent/common to most specialized/rare.
+- Each definition MUST have 2-3 diverse example sentences that show the word in genuinely different contexts (professional, casual, literary, etc.).
+- Clearly mark the register of each sense (formal, informal, slang, technical, etc.).
+
+ETYMOLOGY:
+- Trace the word back to its roots (Latin, Greek, Old English, French, etc.).
+- Explain semantic shifts — how the meaning changed over time.
+- For idioms, explain the historical or cultural origin story.
+
+COLLOCATIONS:
+- Provide the most natural, high-frequency collocations.
+- These should be word combinations a native speaker would instinctively use.
+- Focus on verb + noun, adjective + noun, adverb + adjective, and verb + preposition patterns.
+
+SYNONYMS WITH NUANCE:
+- Don't just list synonyms — explain the DIFFERENCE.
+- Cover connotation (positive/negative), formality level, and semantic range.
+- Help the learner choose the RIGHT synonym for each context.
+
+COMMON MISTAKES:
+- Focus on errors that intermediate-to-advanced learners actually make.
+- Include confused word pairs (affect/effect, lay/lie), grammatical errors (uncountable usage), and false friends for common L1 backgrounds.
+
+MEMORY TIP:
+- Provide a genuinely clever mnemonic, visual image, etymology-based memory hook, or association technique.
+- This should be memorable and practical, not generic.
+
+QUERY:
+"""
+${query}
+"""`,
+  });
 
   return output;
 }

@@ -1,5 +1,5 @@
 import { useState, KeyboardEvent } from 'react';
-import { paraphraseText, MAX_INPUT_CHARACTERS } from '../services/ai';
+import { paraphraseText, expandText, MAX_INPUT_CHARACTERS } from '../services/ai';
 import {
   Loader2,
   RefreshCw,
@@ -44,6 +44,11 @@ const STYLES = [
     description: 'Makes text concise and brief',
   },
   {
+    value: 'expand',
+    label: 'Expand',
+    description: 'Elaborates and adds depth',
+  },
+  {
     value: 'slang',
     label: 'Slang',
     description: 'Modern internet/street slang',
@@ -72,8 +77,16 @@ export function Paraphraser({ layout, optionsStyle }: ParaphraserProps) {
     setIsChecking(true);
     setError(null);
     try {
-      const res = await paraphraseText(text, style);
-      setResult(res);
+      if (style === 'expand') {
+        const res = await expandText(text);
+        setResult({
+          paraphrasedText: res.expandedText,
+          explanation: res.explanation,
+        });
+      } else {
+        const res = await paraphraseText(text, style);
+        setResult(res);
+      }
     } catch (err: any) {
       setError(
         err?.message || 'An unexpected error occurred. Please try again.',

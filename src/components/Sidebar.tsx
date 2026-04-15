@@ -12,6 +12,8 @@ import {
   Menu,
   X,
   User,
+  Languages,
+  BookOpen,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -68,6 +70,18 @@ export function Sidebar({
       id: 'humanizer' as AppTab,
       label: 'Humanizer',
       icon: User,
+      category: 'Writing Tools',
+    },
+    {
+      id: 'translate' as AppTab,
+      label: 'Translate',
+      icon: Languages,
+      category: 'Writing Tools',
+    },
+    {
+      id: 'dictionary' as AppTab,
+      label: 'Dictionary',
+      icon: BookOpen,
       category: 'Writing Tools',
     },
     {
