@@ -13,6 +13,10 @@ So I needed a place to evaluate my texts, write and process prompts for LLMs, an
   - **Optimize:** Refine existing prompts for clarity and performance.
   - **Rewrite:** Adapt prompts to new goals or specific stylistic constraints.
 
+## Site Link
+
+https://lumina.amanuelch.com
+
 ## Setup
 
 1. **Clone the repository**
