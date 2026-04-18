@@ -2,8 +2,6 @@
 
 So I needed a place to evaluate my texts, write and process prompts for LLMs, and I wanted it to be fast and elegant. So I built Lumina. It's basically a non-bloated and simple alternative to quill-bot.
 
-Lumina is an AI-powered text processing and prompt engineering suite designed to enhance writing, analysis, and LLM interactions. It provides a distraction-free environment for professional writing and AI-driven creative workflows.
-
 ## Features
 
 - **Grammar & Style:** Advanced error detection with an optional "informal" mode to keep your natural voice.
@@ -14,15 +12,6 @@ Lumina is an AI-powered text processing and prompt engineering suite designed to
   - **Make:** Convert rough concepts into production-ready LLM prompts.
   - **Optimize:** Refine existing prompts for clarity and performance.
   - **Rewrite:** Adapt prompts to new goals or specific stylistic constraints.
-
-## Tech Stack
-
-- **Core:** React 19 + Vite + TypeScript
-- **AI Core:** [Vercel AI SDK](https://sdk.vercel.ai/)
-- **Models:** Google Gemini 3 (via `@ai-sdk/google`)
-- **Styling:** Tailwind CSS 4
-- **Animation:** Motion (Framer Motion)
-- **Icons:** Lucide React
 
 ## Setup
 

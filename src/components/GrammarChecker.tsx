@@ -1,5 +1,10 @@
 import { useState, KeyboardEvent } from 'react';
-import { checkGrammar, MAX_INPUT_CHARACTERS } from '../services/ai';
+import {
+  checkGrammar,
+  MAX_INPUT_CHARACTERS,
+  GrammarOptions,
+  DEFAULT_GRAMMAR_OPTIONS,
+} from '../services/ai';
 import {
   Loader2,
   CheckCircle2,
@@ -7,6 +12,8 @@ import {
   ArrowRight,
   Sparkles,
   CircleAlert,
+  SlidersHorizontal,
+  ChevronDown,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CopyButton } from './CopyButton';
@@ -26,7 +33,11 @@ export function GrammarChecker({
   const [text, setText] = useState('');
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isInformal, setIsInformal] = useState(preserveInformalityDefault);
+  const [showOptions, setShowOptions] = useState(false);
+  const [options, setOptions] = useState<GrammarOptions>({
+    ...DEFAULT_GRAMMAR_OPTIONS,
+    preserveInformality: preserveInformalityDefault,
+  });
   const [result, setResult] = useState<{
     correctedText: string;
     explanations: {
@@ -38,12 +49,27 @@ export function GrammarChecker({
 
   const isOverLimit = text.length > MAX_INPUT_CHARACTERS;
 
+  const activeExclusionCount = [
+    options.skipCapitalization,
+    options.skipPunctuation,
+    options.skipSpelling,
+    options.skipStyle,
+    options.skipSentenceStructure,
+  ].filter(Boolean).length;
+
+  const updateOption = <K extends keyof GrammarOptions>(
+    key: K,
+    value: GrammarOptions[K],
+  ) => {
+    setOptions((prev) => ({ ...prev, [key]: value }));
+  };
+
   const handleCheck = async () => {
     if (!text.trim() || isOverLimit) return;
     setIsChecking(true);
     setError(null);
     try {
-      const res = await checkGrammar(text, isInformal);
+      const res = await checkGrammar(text, options);
       setResult(res);
     } catch (err: any) {
       setError(
@@ -116,13 +142,13 @@ export function GrammarChecker({
             />
           </div>
           <div className='p-4 border-t border-gray-50 dark:border-neutral-800/50 bg-gray-50/50 dark:bg-neutral-800/30 transition-colors'>
-            <div class='flex items-start flex-col sm:flex-row sm:justify-between sm:items-center gap-3'>
-              <div className='flex flex-col gap-3 mb-3 sm:mb-0'>
+            <div class='flex items-start flex-col sm:flex-row sm:justify-between sm:items-center gap-6'>
+              <div className='flex items-center gap-3'>
                 <Checkbox
-                  checked={isInformal}
-                  onChange={setIsInformal}
+                  checked={options.preserveInformality}
+                  onChange={(v) => updateOption('preserveInformality', v)}
                   label='Keep it informal'
-                  description='Reserve your tone'
+                  description='Preserve your tone'
                 />
               </div>
 
@@ -142,6 +168,86 @@ export function GrammarChecker({
                 {isChecking ? 'Analyzing...' : 'Check Grammar'}
               </button>
             </div>
+
+            <div className='mt-6 pt-3 border-t border-gray-50 dark:border-neutral-800/50'>
+              {/* Options toggle button */}
+              <button
+                onClick={() => setShowOptions(!showOptions)}
+                className={`
+                    flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200
+                    ${
+                      showOptions || activeExclusionCount > 0
+                        ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800'
+                        : 'bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 border border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700'
+                    }
+                  `}
+              >
+                <SlidersHorizontal size={12} />
+                Options
+                {activeExclusionCount > 0 && (
+                  <span className='bg-violet-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center'>
+                    {activeExclusionCount}
+                  </span>
+                )}
+                <ChevronDown
+                  size={12}
+                  className={`transition-transform duration-200 ${showOptions ? 'rotate-180' : ''}`}
+                />
+              </button>
+            </div>
+
+            {/* Collapsible options panel */}
+            <AnimatePresence>
+              {showOptions && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  className='overflow-hidden'
+                >
+                  <div className='mt-4 pt-4 border-t border-gray-100 dark:border-neutral-800'>
+                    <p className='text-[10px] uppercase tracking-widest font-bold text-gray-400 dark:text-neutral-500 mb-3'>
+                      Skip corrections for
+                    </p>
+                    <div className='grid grid-cols-1 xl:grid-cols-2 gap-3'>
+                      <Checkbox
+                        checked={options.skipCapitalization}
+                        onChange={(v) => updateOption('skipCapitalization', v)}
+                        label='Capitalization'
+                        description='Keep original casing'
+                      />
+                      <Checkbox
+                        checked={options.skipPunctuation}
+                        onChange={(v) => updateOption('skipPunctuation', v)}
+                        label='Punctuation'
+                        description='Keep commas, periods, etc.'
+                      />
+                      <Checkbox
+                        checked={options.skipSpelling}
+                        onChange={(v) => updateOption('skipSpelling', v)}
+                        label='Spelling'
+                        description="Don't fix misspellings"
+                      />
+                      <Checkbox
+                        checked={options.skipStyle}
+                        onChange={(v) => updateOption('skipStyle', v)}
+                        label='Style & clarity'
+                        description='Only fix hard errors'
+                      />
+                      <Checkbox
+                        checked={options.skipSentenceStructure}
+                        onChange={(v) =>
+                          updateOption('skipSentenceStructure', v)
+                        }
+                        label='Sentence structure'
+                        description='Keep run-ons & fragments'
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div className='flex items-center mt-6 gap-4'>
               <CharCount count={text.length} />

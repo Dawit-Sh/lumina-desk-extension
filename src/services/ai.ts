@@ -56,12 +56,31 @@ async function callAI(params: any, type: 'default' | 'pro' = 'default') {
   }
 }
 
+export interface GrammarOptions {
+  preserveInformality: boolean;
+  skipCapitalization: boolean;
+  skipPunctuation: boolean;
+  skipSpelling: boolean;
+  skipStyle: boolean;
+  skipSentenceStructure: boolean;
+}
+
+export const DEFAULT_GRAMMAR_OPTIONS: GrammarOptions = {
+  preserveInformality: false,
+  skipCapitalization: false,
+  skipPunctuation: false,
+  skipSpelling: false,
+  skipStyle: false,
+  skipSentenceStructure: false,
+};
+
 export async function checkGrammar(
   text: string,
-  preserveInformality: boolean = false,
+  options: GrammarOptions = DEFAULT_GRAMMAR_OPTIONS,
 ) {
   ensureSafeInput(text, 'Text to check');
-  const informalityInstruction = preserveInformality
+
+  const modeInstruction = options.preserveInformality
     ? `INFORMALITY PRESERVATION MODE:
 - Preserve the author's natural voice, slang, colloquialisms, and casual expressions exactly as written.
 - Only correct objective errors: misspellings, broken syntax, missing words, or grammar mistakes that genuinely impair comprehension.
@@ -72,6 +91,34 @@ export async function checkGrammar(
 - Improve sentence structure for clarity and readability where needed.
 - Ensure subject-verb agreement, proper tense consistency, and correct pronoun usage.
 - Fix run-on sentences and comma splices.`;
+
+  // Build exclusion rules based on toggled-off categories
+  const exclusions: string[] = [];
+  if (options.skipCapitalization)
+    exclusions.push(
+      '- Do NOT correct capitalization. Leave uppercase/lowercase exactly as the author wrote it.',
+    );
+  if (options.skipPunctuation)
+    exclusions.push(
+      '- Do NOT correct punctuation (commas, periods, semicolons, apostrophes, quotation marks, etc.). Leave all punctuation exactly as-is.',
+    );
+  if (options.skipSpelling)
+    exclusions.push(
+      '- Do NOT correct spelling errors. Leave all words spelled exactly as written.',
+    );
+  if (options.skipStyle)
+    exclusions.push(
+      '- Do NOT make style or clarity improvements. Only fix objective grammatical errors, not stylistic choices.',
+    );
+  if (options.skipSentenceStructure)
+    exclusions.push(
+      '- Do NOT fix sentence structure issues such as run-on sentences, comma splices, or sentence fragments. Leave sentence boundaries exactly as written.',
+    );
+
+  const exclusionBlock =
+    exclusions.length > 0
+      ? `\nEXCLUSIONS — the following categories must NOT be corrected:\n${exclusions.join('\n')}\n`
+      : '';
 
   const { output } = await callAI({
     output: Output.object({
@@ -102,14 +149,15 @@ export async function checkGrammar(
 
 YOUR TASK: Analyze the provided text and produce a corrected version with a detailed changelog of every fix.
 
-${informalityInstruction}
-
+${modeInstruction}
+${exclusionBlock}
 RULES:
 - Preserve the original meaning, intent, and information exactly. Never add, remove, or fabricate content.
 - Preserve proper nouns, technical terms, code snippets, and URLs exactly as written.
-- If the text contains no errors, return it unchanged and provide an empty explanations array.
+- If the text contains no errors (or all errors fall under excluded categories), return it unchanged and provide an empty explanations array.
 - Each explanation must cite the exact original phrase and its replacement — be precise, not vague.
 - Categorize fixes by type in your explanations (spelling, grammar, punctuation, syntax, clarity).
+- STRICTLY respect the exclusions above. If a category is excluded, do not touch it even if it is incorrect.
 
 TEXT TO ANALYZE:
 """
@@ -638,45 +686,115 @@ export async function lookupWord(query: string) {
   const { output } = await callAI({
     output: Output.object({
       schema: z.object({
-        entry: z.string().describe('The canonical form of the word, phrase, idiom, or expression being looked up.'),
-        pronunciation: z.string().describe('IPA pronunciation (e.g., /prəˌnʌnsiˈeɪʃən/). For phrases/idioms, provide the pronunciation of the key stressed words.'),
-        partOfSpeech: z.array(z.string()).describe('All possible parts of speech (e.g., ["noun", "verb (transitive)", "adjective"]). For phrases, use labels like "idiom", "phrasal verb", "collocation", "proverb", etc.'),
-        definitions: z.array(
-          z.object({
-            meaning: z.string().describe('Clear, precise definition of this sense.'),
-            examples: z.array(z.string()).describe('2-3 natural, illustrative example sentences showing this meaning in context. Use diverse registers and scenarios.'),
-            register: z.string().describe('Usage register: "formal", "informal", "neutral", "slang", "technical", "literary", "archaic", etc.'),
-          })
-        ).describe('All major senses/definitions, ordered from most common to most specialized.'),
-        etymology: z.string().describe('Origin and history of the word/expression. Include the source language, original meaning, and how it evolved. For idioms, explain the origin story or cultural context.'),
-        collocations: z.array(
-          z.object({
-            pattern: z.string().describe('The collocation pattern (e.g., "make a decision", "heavy rain", "deeply concerned").'),
-            example: z.string().describe('A natural example sentence using this collocation.'),
-          })
-        ).describe('Common word partnerships and collocations — words that naturally go together with this entry.'),
-        synonyms: z.array(
-          z.object({
-            word: z.string().describe('The synonym or near-synonym.'),
-            nuance: z.string().describe('How this synonym differs in meaning, formality, or connotation from the looked-up word.'),
-          })
-        ).describe('Synonyms with nuance explanations showing how each differs from the entry word.'),
-        antonyms: z.array(z.string()).describe('Direct antonyms or opposite expressions.'),
-        relatedIdioms: z.array(
-          z.object({
-            idiom: z.string().describe('The idiom or fixed expression.'),
-            meaning: z.string().describe('What the idiom means.'),
-            example: z.string().describe('An example sentence using this idiom naturally.'),
-          })
-        ).describe('Related idioms, fixed expressions, or proverbs that use or relate to this word/concept.'),
-        commonMistakes: z.array(
-          z.object({
-            mistake: z.string().describe('The common error learners make.'),
-            correction: z.string().describe('The correct usage with explanation.'),
-          })
-        ).describe('Common mistakes learners make with this word/expression — grammatical errors, false friends, confused pairs, etc.'),
-        memoryTip: z.string().describe('A memorable mnemonic, visual association, or learning tip to help remember this word/expression.'),
-        frequencyLevel: z.string().describe('How common this word is: "Essential (top 1000)", "Common (top 3000)", "Intermediate (top 5000)", "Advanced (top 10000)", "Specialized/Rare", or "Idiom/Expression".'),
+        entry: z
+          .string()
+          .describe(
+            'The canonical form of the word, phrase, idiom, or expression being looked up.',
+          ),
+        pronunciation: z
+          .string()
+          .describe(
+            'IPA pronunciation (e.g., /prəˌnʌnsiˈeɪʃən/). For phrases/idioms, provide the pronunciation of the key stressed words.',
+          ),
+        partOfSpeech: z
+          .array(z.string())
+          .describe(
+            'All possible parts of speech (e.g., ["noun", "verb (transitive)", "adjective"]). For phrases, use labels like "idiom", "phrasal verb", "collocation", "proverb", etc.',
+          ),
+        definitions: z
+          .array(
+            z.object({
+              meaning: z
+                .string()
+                .describe('Clear, precise definition of this sense.'),
+              examples: z
+                .array(z.string())
+                .describe(
+                  '2-3 natural, illustrative example sentences showing this meaning in context. Use diverse registers and scenarios.',
+                ),
+              register: z
+                .string()
+                .describe(
+                  'Usage register: "formal", "informal", "neutral", "slang", "technical", "literary", "archaic", etc.',
+                ),
+            }),
+          )
+          .describe(
+            'All major senses/definitions, ordered from most common to most specialized.',
+          ),
+        etymology: z
+          .string()
+          .describe(
+            'Origin and history of the word/expression. Include the source language, original meaning, and how it evolved. For idioms, explain the origin story or cultural context.',
+          ),
+        collocations: z
+          .array(
+            z.object({
+              pattern: z
+                .string()
+                .describe(
+                  'The collocation pattern (e.g., "make a decision", "heavy rain", "deeply concerned").',
+                ),
+              example: z
+                .string()
+                .describe('A natural example sentence using this collocation.'),
+            }),
+          )
+          .describe(
+            'Common word partnerships and collocations — words that naturally go together with this entry.',
+          ),
+        synonyms: z
+          .array(
+            z.object({
+              word: z.string().describe('The synonym or near-synonym.'),
+              nuance: z
+                .string()
+                .describe(
+                  'How this synonym differs in meaning, formality, or connotation from the looked-up word.',
+                ),
+            }),
+          )
+          .describe(
+            'Synonyms with nuance explanations showing how each differs from the entry word.',
+          ),
+        antonyms: z
+          .array(z.string())
+          .describe('Direct antonyms or opposite expressions.'),
+        relatedIdioms: z
+          .array(
+            z.object({
+              idiom: z.string().describe('The idiom or fixed expression.'),
+              meaning: z.string().describe('What the idiom means.'),
+              example: z
+                .string()
+                .describe('An example sentence using this idiom naturally.'),
+            }),
+          )
+          .describe(
+            'Related idioms, fixed expressions, or proverbs that use or relate to this word/concept.',
+          ),
+        commonMistakes: z
+          .array(
+            z.object({
+              mistake: z.string().describe('The common error learners make.'),
+              correction: z
+                .string()
+                .describe('The correct usage with explanation.'),
+            }),
+          )
+          .describe(
+            'Common mistakes learners make with this word/expression — grammatical errors, false friends, confused pairs, etc.',
+          ),
+        memoryTip: z
+          .string()
+          .describe(
+            'A memorable mnemonic, visual association, or learning tip to help remember this word/expression.',
+          ),
+        frequencyLevel: z
+          .string()
+          .describe(
+            'How common this word is: "Essential (top 1000)", "Common (top 3000)", "Intermediate (top 5000)", "Advanced (top 10000)", "Specialized/Rare", or "Idiom/Expression".',
+          ),
       }),
     }),
     prompt: `You are an elite lexicographer, linguist, and language pedagogy expert — a fusion of Oxford English Dictionary precision, Merriam-Webster accessibility, and a world-class ESL teacher's intuition for what learners actually need.
